@@ -13,7 +13,27 @@ inputs:
 runs:
   using: "composite"
   steps:
-      - name: Deploy
-        run: echo 'This is where we should deploy'
-        
+      - name: Create single repository name
+        run: echo '::set-output name=REPO_NAME::${{ input.build-repository }} | cut -d/ -f 2 | tr [:upper:] [:lower:]' #removes "PalladioSimulator/" from repository name
+        id: repo-name-generator
+      - name: Deploy to nightly
+        if: ${{ github.ref_name == 'master' || github.ref_name == 'main'}}
+        uses: easingthemes/ssh-deploy@v2
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          ARGS: "-rltgoDzvO"
+          SOURCE: ${{ inputs.deploy-updatesite }}
+          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
+          REMOTE_USER: ${{ secrets.REMOTE_USER }}
+          TARGET: '${{ secrets.REMOTE_TARGET/steps.repo-name-generator.outputs.REPO_NAME }}/nightly'
+      - name: Deploy to branch
+        if: ${{ github.ref_name != 'master' && github.ref_name != 'main'}}
+        uses: easingthemes/ssh-deploy@v2
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          ARGS: "-rltgoDzvO"
+          SOURCE: ${{ inputs.deploy-updatesite }}
+          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
+          REMOTE_USER: ${{ secrets.REMOTE_USER }}
+          TARGET: '${{ secrets.REMOTE_TARGET/steps.repo-name-generator.outputs.REPO_NAME/github.ref_name }}' 
        
