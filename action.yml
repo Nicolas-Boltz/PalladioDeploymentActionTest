@@ -1,0 +1,19 @@
+name: 'Palladio Build Deployment'
+description: 'Build of Palladio Project'
+inputs:
+  build-repository:  
+    description: 'Repository to deploy to'
+    required: true
+    default: ${{ github.repository }}
+  source-path:
+    description: 'Path to source that is to be deployed'
+    required: true
+    default: ''
+    
+runs:
+  using: "composite"
+  steps:
+      - name: Deploy
+        run: echo 'This is where we should deploy'
+        
+       
