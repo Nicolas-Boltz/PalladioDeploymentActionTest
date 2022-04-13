@@ -1,45 +1,60 @@
 name: 'Palladio Build Deployment'
 description: 'Build of Palladio Project'
 inputs:
-  build-repository:  
-    description: 'Repository to deploy to'
-    required: true
-    default: ${{ github.repository }}
-  source-path:
-    description: 'Path to source that is to be deployed'
+  build-repository: # id of input
+    description: 'Repository to build'
+    required: false
+    default:  ${{ github.repository }}
+  server-ssh-key: # 
+    description: 'SSH Key for deployment'
     required: true
     default: ''
+  remote-host:
+    description: 'Remote host ip'
+    required: true
+    default: ''
+  remote-port:
+    description: 'Remote host port'
+    required: true
+    default: ''
+  remote-user:
+    description: 'Remote host user'
+    required: true
+    default: ''
+  remote-target:
+    description: 'Remote host target path'
+    required: true
+    default: ''
+    
+env:
+  TMP_SSH_KEY_FILE: ssh_key
     
 runs:
   using: "composite"
   steps:
-      - name: Create single repository name
-        run: echo '::set-output name=REPO_NAME::${{ input.build-repository }} | cut -d/ -f 2 | tr [:upper:] [:lower:]' #removes "PalladioSimulator/" from repository name
-        id: repo-name-generator
-      - name: Echo all parameters
+      - name: Create folder name
+        shell: bash
+        run: echo "DEPLOY_FOLDER=$( echo ${{ inputs.build-repository }} | cut -d'/' -f2 | sed -e 's/\(.*\)/\L\1/' )" >> $GITHUB_ENV
+        
+      - name: Create project deployment path
+        shell: bash
+        run: echo "PROJECT_DEPLOY_PATH=$( echo '${{ inputs.remote-target}}/${{ env.DEPLOY_FOLDER }}' )" >> $GITHUB_ENV
+        
+      - name: Create Deployment Path
+        shell: bash
         run: |
-        echo ${{ github.ref_name }}
-        echo '${{ secrets.REMOTE_TARGET/steps.repo-name-generator.outputs.REPO_NAME }}'
-#      - name: Deploy to nightly
-#        if: ${{ github.ref_name == 'master' || github.ref_name == 'main'}}
-#        uses: easingthemes/ssh-deploy@v2
-#        env:
-#          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
-#          ARGS: "-rltgoDzvO"
-#          SOURCE: ${{ inputs.deploy-updatesite }}
-#          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
-#          REMOTE_PORT: ${{ secrets.REMOTE_PORT }}
-#          REMOTE_USER: ${{ secrets.REMOTE_USER }}
-#          TARGET: '${{ secrets.REMOTE_TARGET/steps.repo-name-generator.outputs.REPO_NAME }}/nightly'
-#      - name: Deploy to branch
-#        if: ${{ github.ref_name != 'master' && github.ref_name != 'main'}}
-#        uses: easingthemes/ssh-deploy@v2
-#        env:
-#          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
-#          ARGS: "-rltgoDzvO"
-#          SOURCE: ${{ inputs.deploy-updatesite }}
-#          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
-#          REMOTE_PORT: ${{ secrets.REMOTE_PORT }}
-#          REMOTE_USER: ${{ secrets.REMOTE_USER }}
-#          TARGET: '${{ secrets.REMOTE_TARGET/steps.repo-name-generator.outputs.REPO_NAME/github.ref_name }}' 
-       
+          if ${{ github.ref_name == 'master' }} || ${{ github.ref_name == 'main' }} 
+          then
+              echo "REMOTE_PATH=$( echo '${{ env.PROJECT_DEPLOY_PATH }}/nightly' )" >> $GITHUB_ENV
+          else
+              echo "REMOTE_PATH=$( echo '${{ env.PROJECT_DEPLOY_PATH }}/branches/${{ github.ref_name }}' )" >> $GITHUB_ENV
+          fi
+      - name: Create tmp ssh key file
+        shell: bash
+        run: |
+          ${{ inputs.server-ssh-key }} > ${{ env.TMP_SSH_KEY_FILE }}
+      # create file
+      - name: Copy files to server
+        run: |
+          scp -i ${{  }} -p ${{ inputs.remote-port }} ${{ inputs.remote-user }}@${{ inputs.remote-host }}:${{ env.REMOTE_PATH }}
+
