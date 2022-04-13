@@ -1,9 +1,13 @@
 #!/bin/sh -l
 set -eu
 
+# Create a tmp sftp commands batch file
+TEMP_SFTP_FILE='../sftp'
+printf "%s" "put -r $5 $6" >$TEMP_SFTP_FILE
+
 # Create tmp ssh key file
 TEMP_SSH_PRIVATE_KEY_FILE='../ssh_key'
-printf "%s" "$4" > $TEMP_SSH_PRIVATE_KEY_FILE
+printf "%s" "$4" >$TEMP_SSH_PRIVATE_KEY_FILE
 chmod 600 $TEMP_SSH_PRIVATE_KEY_FILE
 
 echo 'Start Deployment'
@@ -15,7 +19,7 @@ ssh -o StrictHostKeyChecking=no -p $3 -i $TEMP_SSH_PRIVATE_KEY_FILE $1@$2 mkdir 
 ssh -o StrictHostKeyChecking=no -p $3 -i $TEMP_SSH_PRIVATE_KEY_FILE $1@$2 rm -r $6/*
 
 # Copy new files to folder
-scp -i $TEMP_SSH_PRIVATE_KEY_FILE -P $3 -r $5 $1@$2:$6
+sftp -b $TEMP_SFTP_FILE -P $3 -o StrictHostKeyChecking=no -i $TEMP_SSH_PRIVATE_KEY_FILE $1@$2
 
 echo 'Deployment success'
 exit 0
