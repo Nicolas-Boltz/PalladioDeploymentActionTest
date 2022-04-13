@@ -1,12 +1,8 @@
-name: 'Palladio Build Deployment'
-description: 'Build of Palladio Project'
+name: 'Palladio Build Deploy'
+description: 'Deployment of Palladio Project Build Artefacts'
 inputs:
-  build-repository: # id of input
-    description: 'Repository to build'
-    required: false
-    default:  ${{ github.repository }}
-  server-ssh-key: # 
-    description: 'SSH Key for deployment'
+  remote-user:
+    description: 'Remote host user'
     required: true
     default: ''
   remote-host:
@@ -17,44 +13,26 @@ inputs:
     description: 'Remote host port'
     required: true
     default: ''
-  remote-user:
-    description: 'Remote host user'
+  server-ssh-key: # 
+    description: 'SSH Key for deployment'
     required: true
+    default: ''
+  local-source: # 
+    description: 'Updatesite for deployment. If empty deployment is skipped'
+    required: false
     default: ''
   remote-target:
     description: 'Remote host target path'
     required: true
     default: ''
-    
-env:
-  TMP_SSH_KEY_FILE: ssh_key
-    
-runs:
-  using: "composite"
-  steps:
-      - name: Create folder name
-        shell: bash
-        run: echo "DEPLOY_FOLDER=$( echo ${{ inputs.build-repository }} | cut -d'/' -f2 | sed -e 's/\(.*\)/\L\1/' )" >> $GITHUB_ENV
-        
-      - name: Create project deployment path
-        shell: bash
-        run: echo "PROJECT_DEPLOY_PATH=$( echo '${{ inputs.remote-target}}/${{ env.DEPLOY_FOLDER }}' )" >> $GITHUB_ENV
-        
-      - name: Create Deployment Path
-        shell: bash
-        run: |
-          if ${{ github.ref_name == 'master' }} || ${{ github.ref_name == 'main' }} 
-          then
-              echo "REMOTE_PATH=$( echo '${{ env.PROJECT_DEPLOY_PATH }}/nightly' )" >> $GITHUB_ENV
-          else
-              echo "REMOTE_PATH=$( echo '${{ env.PROJECT_DEPLOY_PATH }}/branches/${{ github.ref_name }}' )" >> $GITHUB_ENV
-          fi
-      - name: Create tmp ssh key file
-        shell: bash
-        run: |
-          ${{ inputs.server-ssh-key }} > ${{ env.TMP_SSH_KEY_FILE }}
-      # create file
-      - name: Copy files to server
-        run: |
-          scp -i ${{  }} -p ${{ inputs.remote-port }} ${{ inputs.remote-user }}@${{ inputs.remote-host }}:${{ env.REMOTE_PATH }}
 
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.remote-user }} #1
+    - ${{ inputs.remote-host }} #2
+    - ${{ inputs.remote-port }} #3
+    - ${{ inputs.server-ssh-key }} #4
+    - ${{ inputs.local-source }} #5
+    - ${{ inputs.remote-target }} #6
